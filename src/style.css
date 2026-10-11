@@ -1,0 +1,432 @@
+:root {
+  --violet: #5b21b6;
+  --violet-clair: #ede9fe;
+  --texte: #1f2937;
+  --gris: #6b7280;
+  --bord: #e5e7eb;
+  --fond: #f9fafb;
+  --rouge: #b91c1c;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-size: 18px;
+  line-height: 1.45;
+  color: var(--texte);
+  background: var(--fond);
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select,
+.bouton {
+  font: inherit;
+}
+
+button,
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 8px 16px;
+  border: 2px solid var(--violet);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--violet);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+button.principal {
+  background: var(--violet);
+  color: #fff;
+  width: 100%;
+}
+
+button.lien {
+  border: none;
+  background: none;
+  color: var(--gris);
+  text-decoration: underline;
+  width: 100%;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 14px;
+  border: 2px solid var(--bord);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--texte);
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--violet);
+}
+
+.discret {
+  color: var(--gris);
+  font-size: 0.9rem;
+  margin: 4px 0;
+}
+
+.centre {
+  text-align: center;
+  margin-top: 24px;
+}
+
+.vide {
+  text-align: center;
+  color: var(--gris);
+  padding: 32px 8px;
+}
+
+.vide .principal {
+  margin-top: 16px;
+}
+
+/* ---------- Structure ---------- */
+
+.appli {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: calc(84px + env(safe-area-inset-bottom));
+}
+
+.entete {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
+  background: var(--violet);
+  color: #fff;
+}
+
+.entete h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.entete .discret {
+  color: #ddd6fe;
+}
+
+.contenu {
+  padding: 16px;
+}
+
+.onglets {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  background: #fff;
+  border-top: 1px solid var(--bord);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.onglets button {
+  flex: 1;
+  max-width: 214px;
+  flex-direction: column;
+  gap: 0;
+  min-height: 68px;
+  border: none;
+  border-radius: 0;
+  color: var(--gris);
+  font-size: 0.85rem;
+}
+
+.onglets button span {
+  font-size: 1.4rem;
+}
+
+.onglets button.actif {
+  color: var(--violet);
+  background: var(--violet-clair);
+}
+
+.message {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  z-index: 3;
+  max-width: 616px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--texte);
+  color: #fff;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+}
+
+/* ---------- Connexion ---------- */
+
+.connexion {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 48px 20px;
+  text-align: center;
+}
+
+.connexion img {
+  border-radius: 22px;
+}
+
+.connexion form {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.alerte {
+  color: var(--rouge);
+}
+
+/* ---------- Concerts ---------- */
+
+.filtres {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filtres button {
+  flex: 1;
+  font-size: 0.9rem;
+  border-color: var(--bord);
+  color: var(--texte);
+}
+
+.filtres button.actif {
+  border-color: var(--violet);
+  background: var(--violet-clair);
+  color: var(--violet);
+}
+
+.choix-artiste {
+  margin-bottom: 8px;
+}
+
+.mois {
+  margin: 24px 0 8px;
+  font-size: 1.05rem;
+  color: var(--violet);
+}
+
+.concert {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--bord);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.concert.annule {
+  opacity: 0.6;
+}
+
+.calendrier {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 64px;
+  padding: 6px 0;
+  border-radius: 12px;
+  background: var(--violet-clair);
+  color: var(--violet);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  line-height: 1.2;
+  align-self: flex-start;
+}
+
+.calendrier strong {
+  font-size: 1.6rem;
+}
+
+.details {
+  flex: 1;
+  min-width: 0;
+}
+
+.details h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.lieu {
+  margin: 2px 0 0;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.75rem;
+  vertical-align: middle;
+}
+
+.badge.rouge {
+  background: #fee2e2;
+  color: var(--rouge);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.actions > * {
+  flex: 1;
+  min-width: 120px;
+}
+
+.actions button.suivi {
+  background: var(--violet);
+  color: #fff;
+}
+
+/* ---------- Artistes ---------- */
+
+.ajout label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.suggestions,
+.artistes {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.suggestions button {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 6px;
+  border-color: var(--bord);
+  color: var(--texte);
+  text-align: left;
+}
+
+.suggestions .plus {
+  margin-left: auto;
+  color: var(--violet);
+}
+
+.suggestions img,
+.artistes img,
+.sans-image {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.sans-image {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--violet-clair);
+  font-size: 1.3rem;
+}
+
+.nom {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nom small {
+  color: var(--gris);
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.artistes li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--bord);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.artistes .nom {
+  flex: 1;
+  font-weight: 600;
+}
+
+.retirer {
+  border-color: var(--bord);
+  color: var(--gris);
+  font-size: 0.85rem;
+  min-height: 40px;
+}
+
+/* ---------- Réglages ---------- */
+
+.reglages {
+  display: grid;
+  gap: 14px;
+}
+
+.carte {
+  padding: 16px;
+  border: 1px solid var(--bord);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.carte h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.carte p {
+  margin: 0 0 8px;
+}
+
+.carte button {
+  margin-top: 8px;
+}
