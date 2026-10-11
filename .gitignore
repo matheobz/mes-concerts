@@ -1,5 +1,6 @@
 node_modules/
 dist/
+tests/.sortie/
 .wrangler/
 .dev.vars
 .env
@@ -7,3 +8,9 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+
+# Android : clés de signature et fichiers locaux (ne jamais commiter un keystore)
+*.keystore
+*.jks
+keystore.properties
+local.properties

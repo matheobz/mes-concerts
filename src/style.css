@@ -430,3 +430,40 @@ select:focus {
 .carte button {
   margin-top: 8px;
 }
+
+/* ---------- Appli Android : bandeaux, réglages ---------- */
+
+.bandeau {
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border: 2px solid #f59e0b;
+  border-radius: 16px;
+  background: #fffbeb;
+}
+
+.bandeau p {
+  margin: 0 0 10px;
+}
+
+.ok {
+  color: #047857;
+  font-weight: 600;
+}
+
+.carte ol {
+  margin: 4px 0 8px;
+  padding-left: 22px;
+}
+
+.carte li {
+  margin-bottom: 4px;
+}
+
+.carte button {
+  width: 100%;
+}
+
+details.carte summary {
+  color: var(--gris);
+  cursor: pointer;
+}

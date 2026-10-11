@@ -1,4 +1,4 @@
-// Types partagés entre l'interface (src/) et le Worker (worker/).
+// Types partagés entre l'interface (src/) et la vérification en arrière-plan (runner/).
 
 export interface Artiste {
   id: string;
@@ -11,10 +11,8 @@ export interface Artiste {
   verifieLe?: string;
 }
 
-export type Source = 'ticketmaster' | 'bandsintown';
-
 export interface Concert {
-  /** Clé stable : artiste + date + ville (évite les doublons entre sources). */
+  /** Clé stable : artiste + date + ville (évite les doublons entre billetteries). */
   id: string;
   artisteId: string;
   artisteNom: string;
@@ -28,30 +26,33 @@ export interface Concert {
   /** Code pays (FR, BE...). */
   pays: string;
   url?: string;
-  source: Source;
   annule?: boolean;
   trouveLe: string;
-  /** Mail "nouvelle date" déjà envoyé (ou date déjà connue à l'ajout de l'artiste). */
+  /** Notification "nouvelle date" déjà envoyée (ou date déjà connue à l'ajout de l'artiste). */
   notifie: boolean;
-  /** Delphine suit ce concert : elle recevra un rappel quelques jours avant. */
+  /** Delphine suit ce concert : elle aura un rappel quelques jours avant. */
   suivi: boolean;
   rappelEnvoye: boolean;
 }
 
-/** Tout ce qui est stocké dans KV, sous une seule clé. */
+/** Tout ce qui est stocké sur le téléphone, sous une seule clé. */
 export interface Donnees {
   artistes: Artiste[];
   concerts: Record<string, Concert>;
+  /** Dernière vérification complète (appels Ticketmaster), par l'appli ou en arrière-plan. */
   derniereVerif?: string;
   dernierBilan?: string;
+  /** Dernier passage de la vérification en arrière-plan (même sans appel réseau). */
+  derniereVerifFond?: string;
 }
 
-/** Ce que l'API renvoie à l'interface. */
+/** Ce que l'interface affiche. */
 export interface Etat {
   artistes: Artiste[];
   concerts: Concert[];
   derniereVerif?: string;
   dernierBilan?: string;
+  derniereVerifFond?: string;
   rappelJours: number;
 }
 
@@ -61,4 +62,12 @@ export interface Suggestion {
   image?: string;
   genre?: string;
   nbConcerts?: number;
+}
+
+/** Notification locale à afficher sur le téléphone. */
+export interface Notif {
+  /** Entier 32 bits (exigence Android). */
+  id: number;
+  titre: string;
+  texte: string;
 }

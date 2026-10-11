@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Artiste, Etat, Suggestion } from '../shared/types';
-import { api } from './api';
+import { actions } from './actions';
 import type { Outils } from './App';
 import { pluriel } from './format';
 
@@ -21,7 +21,7 @@ export function Artistes({ etat, outils }: { etat: Etat; outils: Outils }) {
     const t = setTimeout(async () => {
       setRecherche(true);
       try {
-        const s = await api.rechercher(outils.code, q);
+        const s = await actions.rechercher(q);
         if (!annule) setSuggestions(s);
       } catch {
         if (!annule) setSuggestions([]);
@@ -33,12 +33,12 @@ export function Artistes({ etat, outils }: { etat: Etat; outils: Outils }) {
       annule = true;
       clearTimeout(t);
     };
-  }, [saisie, outils.code]);
+  }, [saisie]);
 
   async function ajouter(nom: string, tmId?: string, image?: string) {
     setAjout(true);
     try {
-      const r = await api.ajouterArtiste(outils.code, nom, tmId, image);
+      const r = await actions.ajouterArtiste(nom, tmId, image);
       outils.setEtat(r.etat);
       setSaisie('');
       setSuggestions([]);
@@ -46,7 +46,7 @@ export function Artistes({ etat, outils }: { etat: Etat; outils: Outils }) {
         r.avertissement ??
           (r.trouves
             ? `${nom} ajouté : ${pluriel(r.trouves, 'concert trouvé', 'concerts trouvés')}.`
-            : `${nom} ajouté. Aucun concert pour l'instant, vous serez prévenue par mail.`),
+            : `${nom} ajouté. Pas de concert pour l'instant : une notification vous préviendra.`),
       );
     } catch (e) {
       outils.echec(e);
@@ -58,7 +58,7 @@ export function Artistes({ etat, outils }: { etat: Etat; outils: Outils }) {
   async function retirer(a: Artiste) {
     if (!window.confirm(`Retirer ${a.nom} de vos artistes ?`)) return;
     try {
-      outils.setEtat(await api.retirerArtiste(outils.code, a.id));
+      outils.setEtat(await actions.retirerArtiste(a.id));
       outils.informer(`${a.nom} a été retiré.`);
     } catch (e) {
       outils.echec(e);

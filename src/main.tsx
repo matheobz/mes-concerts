@@ -8,10 +8,3 @@ createRoot(document.getElementById('racine')!).render(
     <App />
   </StrictMode>,
 );
-
-// Service worker : rend l'appli installable et lisible hors connexion.
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('/sw.js');
-  });
-}

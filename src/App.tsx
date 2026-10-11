@@ -1,30 +1,32 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Etat } from '../shared/types';
-import { CodeRefuse, api, enregistrerCode, etatEnCache, lireCode, oublierCode } from './api';
+import { actions } from './actions';
 import { Artistes } from './Artistes';
+import { Bandeaux, useAutorisations } from './Bandeaux';
 import { Concerts } from './Concerts';
-import { Connexion } from './Connexion';
+import { quandNotifTouchee, quandRetour } from './natif';
 import { Reglages } from './Reglages';
 
 type Onglet = 'concerts' | 'artistes' | 'reglages';
 
 export interface Outils {
-  code: string;
   setEtat: (e: Etat) => void;
   /** Affiche un message en bas de l'écran. */
   informer: (texte: string) => void;
-  /** Gère une erreur d'appel (code refusé = retour à l'écran de connexion). */
+  /** Affiche une erreur. */
   echec: (e: unknown) => void;
 }
 
 export function App() {
-  const [code, setCode] = useState(lireCode);
-  const [etat, setEtat] = useState<Etat | null>(etatEnCache);
+  const [etat, setEtat] = useState<Etat | null>(null);
   const [onglet, setOnglet] = useState<Onglet>('concerts');
   const [info, setInfo] = useState('');
   const [chargement, setChargement] = useState(false);
+  const autorisations = useAutorisations();
+  const { actualiser } = autorisations;
 
   const informer = useCallback((texte: string) => setInfo(texte), []);
+  const echec = useCallback((e: unknown) => setInfo(e instanceof Error ? e.message : 'Une erreur est survenue.'), []);
 
   useEffect(() => {
     if (!info) return;
@@ -32,53 +34,30 @@ export function App() {
     return () => clearTimeout(t);
   }, [info]);
 
-  const deconnecter = useCallback(() => {
-    oublierCode();
-    setCode('');
-  }, []);
-
-  const echec = useCallback(
-    (e: unknown) => {
-      if (e instanceof CodeRefuse) {
-        deconnecter();
-        setInfo('Code incorrect, merci de le saisir à nouveau.');
-      } else {
-        setInfo(e instanceof Error ? e.message : 'Une erreur est survenue.');
-      }
-    },
-    [deconnecter],
-  );
-
-  const charger = useCallback(async () => {
-    if (!code) return;
-    setChargement(true);
+  // À chaque ouverture : affichage immédiat des données du téléphone, puis vérification en secours
+  // (Ticketmaster si la dernière vérification a plus de 6 heures, rappels toujours).
+  const rafraichir = useCallback(async () => {
     try {
-      setEtat(await api.etat(code));
+      setEtat(await actions.etat());
+      setChargement(true);
+      setEtat(await actions.verifierSiBesoin());
     } catch (e) {
       echec(e);
     } finally {
       setChargement(false);
     }
-  }, [code, echec]);
+  }, [echec]);
 
   useEffect(() => {
-    void charger();
-  }, [charger]);
+    void rafraichir();
+    void quandRetour(() => {
+      void rafraichir();
+      void actualiser();
+    });
+    void quandNotifTouchee(() => setOnglet('concerts'));
+  }, [rafraichir, actualiser]);
 
-  if (!code) {
-    return (
-      <Connexion
-        message={info}
-        valider={(c) => {
-          enregistrerCode(c);
-          setInfo('');
-          setCode(c);
-        }}
-      />
-    );
-  }
-
-  const outils: Outils = { code, setEtat, informer, echec };
+  const outils: Outils = { setEtat, informer, echec };
 
   return (
     <div className="appli">
@@ -88,6 +67,7 @@ export function App() {
       </header>
 
       <main className="contenu">
+        {onglet !== 'reglages' && <Bandeaux autorisations={autorisations} outils={outils} />}
         {!etat ? (
           <p className="vide">Chargement…</p>
         ) : onglet === 'concerts' ? (
@@ -95,7 +75,7 @@ export function App() {
         ) : onglet === 'artistes' ? (
           <Artistes etat={etat} outils={outils} />
         ) : (
-          <Reglages etat={etat} outils={outils} deconnecter={deconnecter} />
+          <Reglages etat={etat} outils={outils} autorisations={autorisations} />
         )}
       </main>
 
@@ -113,7 +93,7 @@ export function App() {
           <span aria-hidden>⭐</span>Mes artistes
         </button>
         <button className={onglet === 'reglages' ? 'actif' : ''} onClick={() => setOnglet('reglages')}>
-          <span aria-hidden>⚙️</span>Réglages
+          <span aria-hidden>🔧</span>Réglages
         </button>
       </nav>
     </div>

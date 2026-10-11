@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Concert, Etat } from '../shared/types';
-import { api } from './api';
+import { actions } from './actions';
 import type { Outils } from './App';
 import { estRecent, heure, jourCourt, moisAnnee, moisCourt, numeroJour, pluriel } from './format';
 
@@ -22,7 +22,7 @@ export function Concerts({
   if (!etat.artistes.length) {
     return (
       <div className="vide">
-        <p>Ajoutez vos artistes préférés : leurs concerts apparaîtront ici.</p>
+        <p>Bienvenue ! Ajoutez vos artistes préférés : leurs concerts en France apparaîtront ici.</p>
         <button className="principal" onClick={allerAuxArtistes}>
           Ajouter un artiste
         </button>
@@ -30,25 +30,23 @@ export function Concerts({
     );
   }
 
-  const liste = etat.concerts.filter(
-    (c) => (filtre === 'tous' || c.suivi) && (!artiste || c.artisteId === artiste),
-  );
+  const liste = etat.concerts.filter((c) => (filtre === 'tous' || c.suivi) && (!artiste || c.artisteId === artiste));
 
   // Regroupement par mois.
   const parMois = new Map<string, Concert[]>();
   for (const c of liste) {
     const mois = moisAnnee(c.date);
-    parMois.set(mois, [...(parMois.get(mois) ?? []), c]);
+    parMois.set(mois, (parMois.get(mois) ?? []).concat(c));
   }
 
   async function basculer(c: Concert) {
     setEnCours(c.id);
     try {
-      outils.setEtat(await api.suivre(outils.code, c.id, !c.suivi));
+      outils.setEtat(await actions.suivre(c.id, !c.suivi));
       outils.informer(
         c.suivi
           ? 'Vous ne suivez plus ce concert.'
-          : `C'est noté : un rappel vous sera envoyé ${etat.rappelJours} jours avant.`,
+          : `C'est noté : vous aurez une notification de rappel ${etat.rappelJours} jours avant.`,
       );
     } catch (e) {
       outils.echec(e);
@@ -81,12 +79,12 @@ export function Concerts({
       {!liste.length && (
         <p className="vide">
           {filtre === 'suivis'
-            ? 'Vous ne suivez aucun concert. Touchez « Suivre » sur un concert pour recevoir un rappel.'
-            : 'Aucun concert annoncé en France pour le moment. Vous recevrez un mail dès qu’une date sort.'}
+            ? 'Vous ne suivez aucun concert. Touchez « Suivre » sur un concert pour avoir un rappel.'
+            : 'Aucun concert annoncé en France pour le moment. Une notification vous préviendra dès qu’une date sort.'}
         </p>
       )}
 
-      {[...parMois].map(([mois, concerts]) => (
+      {Array.from(parMois).map(([mois, concerts]) => (
         <section key={mois}>
           <h2 className="mois">{mois}</h2>
           {concerts.map((c) => (
@@ -132,7 +130,7 @@ export function Concerts({
 
       {filtre === 'tous' && liste.length > 0 && (
         <p className="discret centre">
-          {pluriel(liste.length, 'concert')} à venir. « Suivre » = rappel par mail {etat.rappelJours} jours avant.
+          {pluriel(liste.length, 'concert')} à venir. « Suivre » = notification de rappel {etat.rappelJours} jours avant.
         </p>
       )}
     </>
