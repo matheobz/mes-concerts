@@ -244,7 +244,7 @@ export function Concerts({
 
       {liste.length > 0 && (
         <p className="discret centre">
-          {pluriel(liste.length, 'concert')} à venir. La cloche : un rappel {etat.rappelJours} jours avant.
+          {pluriel(liste.length, 'concert')} à venir. La cloche : un rappel {etat.rappelJours} jours avant le concert.
         </p>
       )}
 

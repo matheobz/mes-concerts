@@ -176,9 +176,12 @@ export function Reglages({
         <p>Dès qu'une nouvelle date est annoncée, une notification apparaît sur votre téléphone.</p>
         <p>
           Billetterie : une alerte quand l'ouverture est annoncée, puis 24 heures et 1 heure avant, pour être
-          prête au bon moment.
+          prête au bon moment. C'est automatique, pour tous les concerts de vos artistes.
         </p>
-        <p>Touchez la cloche d'un concert : vous aurez un rappel {etat.rappelJours} jours avant.</p>
+        <p>
+          La cloche, c'est pour un concert où vous allez : touchez-la et vous aurez un rappel {etat.rappelJours} jours
+          avant le concert.
+        </p>
       </section>
 
       <section className="carte">

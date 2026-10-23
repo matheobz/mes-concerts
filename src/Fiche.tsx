@@ -130,7 +130,7 @@ export function Fiche({
           </div>
           {!c.annule && (
             <p className="discret centre">
-              {c.suivi ? `Rappel ${rappelJours} jours avant le concert.` : `Suivre : un rappel ${rappelJours} jours avant.`}
+              {c.suivi ? `Rappel ${rappelJours} jours avant le concert.` : `Suivre : un rappel ${rappelJours} jours avant le concert.`}
             </p>
           )}
         </div>
