@@ -204,7 +204,20 @@ export function Reglages({
         </div>
       </section>
 
-      <MiseAJour maj={maj} outils={outils} />
+      <section className="carte">
+        <h2>Dernière vérification</h2>
+        <p>{etat.derniereVerif ? dateEtHeure(etat.derniereVerif) : 'Pas encore faite.'}</p>
+        {etat.dernierBilan && <p className="discret">{etat.dernierBilan}</p>}
+        {surTelephone && (
+          <p className="discret">
+            Vérification automatique :{' '}
+            {etat.derniereVerifFond ? `dernier passage ${dateEtHeure(etat.derniereVerifFond)}` : 'pas encore passée'}
+          </p>
+        )}
+        <button className="principal" disabled={!!enCours} onClick={() => void verifier()}>
+          {enCours === 'verif' ? 'Vérification…' : 'Vérifier maintenant'}
+        </button>
+      </section>
 
       <section className="carte">
         <h2>Notifications</h2>
@@ -249,20 +262,7 @@ export function Reglages({
         </section>
       )}
 
-      <section className="carte">
-        <h2>Dernière vérification</h2>
-        <p>{etat.derniereVerif ? dateEtHeure(etat.derniereVerif) : 'Pas encore faite.'}</p>
-        {etat.dernierBilan && <p className="discret">{etat.dernierBilan}</p>}
-        {surTelephone && (
-          <p className="discret">
-            Vérification automatique :{' '}
-            {etat.derniereVerifFond ? `dernier passage ${dateEtHeure(etat.derniereVerifFond)}` : 'pas encore passée'}
-          </p>
-        )}
-        <button className="principal" disabled={!!enCours} onClick={() => void verifier()}>
-          {enCours === 'verif' ? 'Vérification…' : 'Vérifier maintenant'}
-        </button>
-      </section>
+      <MiseAJour maj={maj} outils={outils} />
 
       <section className="carte">
         <h2>Sauvegarde</h2>
@@ -282,6 +282,28 @@ export function Reglages({
           hidden
           onChange={(e) => void importer(e.target.files?.[0])}
         />
+      </section>
+
+      <section className="carte">
+        <h2>Sources</h2>
+        <p>D'où viennent les informations de l'appli :</p>
+        <ul className="sources">
+          <li>
+            <strong>Ticketmaster</strong>
+            <span>Les concerts, les salles, l'ouverture de la billetterie et les photos des artistes. Consulté chaque jour.</span>
+          </li>
+          <li>
+            <strong>Google Maps</strong>
+            <span>L'itinéraire jusqu'à la salle, quand vous touchez « Itinéraire ».</span>
+          </li>
+          <li>
+            <strong>GitHub</strong>
+            <span>Les nouvelles versions de l'appli.</span>
+          </li>
+        </ul>
+        <p className="discret">
+          Un concert vendu ailleurs que sur Ticketmaster (petites salles, certains festivals) peut ne pas apparaître.
+        </p>
       </section>
 
       <details className="carte">

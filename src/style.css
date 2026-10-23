@@ -1341,6 +1341,36 @@ input::placeholder {
   margin-bottom: 4px;
 }
 
+/* Carte « Sources » : une ligne par source, le nom en serif doré. */
+.carte .sources {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.carte .sources li {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 10px 0;
+  border-top: 1px solid var(--trait);
+}
+
+.carte .sources li:last-child {
+  border-bottom: 1px solid var(--trait);
+}
+
+.carte .sources strong {
+  font-family: var(--serif);
+  font-weight: 500;
+  color: var(--or-clair);
+}
+
+.carte .sources span {
+  color: var(--gris);
+  font-size: 0.92rem;
+}
+
 details.carte summary {
   color: var(--gris);
   cursor: pointer;
