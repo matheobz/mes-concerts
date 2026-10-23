@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { type CSSProperties, useEffect, useState } from 'react';
 import type { Artiste, Etat, Suggestion } from '../shared/types';
 import { actions } from './actions';
 import type { Outils } from './App';
+import { Portrait } from './Elements';
 import { pluriel } from './format';
+import { IconeFermer, IconePlus, IconeRecherche } from './Icones';
 
 export function Artistes({ etat, outils }: { etat: Etat; outils: Outils }) {
   const [saisie, setSaisie] = useState('');
@@ -77,39 +79,48 @@ export function Artistes({ etat, outils }: { etat: Etat; outils: Outils }) {
           if (premier) void ajouter(premier.nom, premier.tmId, premier.image);
         }}
       >
-        <label htmlFor="artiste">Ajouter un artiste</label>
-        <input
-          id="artiste"
-          type="search"
-          placeholder="Nom de l'artiste (ex. Vianney)"
-          value={saisie}
-          onChange={(e) => setSaisie(e.target.value)}
-          autoComplete="off"
-          disabled={ajout}
-        />
+        <label htmlFor="artiste" className="sr">
+          Ajouter un artiste
+        </label>
+        <div className="champ">
+          <IconeRecherche />
+          <input
+            id="artiste"
+            type="search"
+            placeholder="Ajouter un artiste (ex. Vianney)"
+            value={saisie}
+            onChange={(e) => setSaisie(e.target.value)}
+            autoComplete="off"
+            disabled={ajout}
+          />
+          {(recherche || ajout) && <span className="synchro petite" aria-hidden />}
+        </div>
       </form>
 
       {ajout && <p className="discret">Ajout et recherche des concerts…</p>}
-      {!ajout && recherche && <p className="discret">Recherche…</p>}
 
       {!ajout && saisie.trim().length >= 2 && (
         <ul className="suggestions">
-          {suggestions.map((s) => (
-            <li key={s.tmId}>
+          {suggestions.map((s, i) => (
+            <li key={s.tmId} style={{ '--i': i } as CSSProperties}>
               <button onClick={() => void ajouter(s.nom, s.tmId, s.image)}>
-                {s.image ? <img src={s.image} alt="" /> : <span className="sans-image">🎵</span>}
+                <Portrait artiste={{ id: s.tmId, nom: s.nom, image: s.image, ajouteLe: '' }} nom={s.nom} />
                 <span className="nom">
                   {s.nom}
                   {s.genre && s.genre !== 'Undefined' && <small>{s.genre}</small>}
                 </span>
-                <span className="plus">Ajouter</span>
+                <span className="plus">
+                  <IconePlus taille={20} />
+                </span>
               </button>
             </li>
           ))}
           {!recherche && (
-            <li>
+            <li style={{ '--i': suggestions.length } as CSSProperties}>
               <button className="libre" onClick={() => void ajouter(saisie.trim())}>
-                <span className="sans-image">＋</span>
+                <span className="portrait initiales" aria-hidden>
+                  <IconePlus taille={20} />
+                </span>
                 <span className="nom">
                   Ajouter « {saisie.trim()} »
                   <small>{suggestions.length ? 'pas dans la liste ci-dessus' : 'recherche par nom'}</small>
@@ -120,21 +131,33 @@ export function Artistes({ etat, outils }: { etat: Etat; outils: Outils }) {
         </ul>
       )}
 
-      <h2 className="mois">Mes artistes ({etat.artistes.length})</h2>
-      {!etat.artistes.length && <p className="vide">Aucun artiste pour l'instant.</p>}
+      <h2 className="mois">
+        {etat.artistes.length ? pluriel(etat.artistes.length, 'artiste suivi', 'artistes suivis') : 'Aucun artiste'}
+      </h2>
+      {!etat.artistes.length && <p className="vide">Cherchez un nom ci-dessus pour commencer.</p>}
       <ul className="artistes">
-        {etat.artistes.map((a) => (
-          <li key={a.id}>
-            {a.image ? <img src={a.image} alt="" /> : <span className="sans-image">🎵</span>}
-            <span className="nom">
-              {a.nom}
-              <small>{pluriel(nbConcerts(a.id), 'concert à venir', 'concerts à venir')}</small>
-            </span>
-            <button className="retirer" onClick={() => void retirer(a)} aria-label={`Retirer ${a.nom}`}>
-              Retirer
-            </button>
-          </li>
-        ))}
+        {etat.artistes.map((a, i) => {
+          const n = nbConcerts(a.id);
+          return (
+            <li key={a.id} style={{ '--i': Math.min(i, 12) } as CSSProperties}>
+              {a.image ? (
+                <img src={a.image} alt="" loading="lazy" />
+              ) : (
+                <span className="sans-image" aria-hidden>
+                  {a.nom.charAt(0).toUpperCase()}
+                </span>
+              )}
+              <div className="voile" />
+              <span className="nom">
+                {a.nom}
+                <small className={n ? 'or' : ''}>{n ? pluriel(n, 'concert', 'concerts') : 'Pas de date'}</small>
+              </span>
+              <button className="retirer" onClick={() => void retirer(a)} aria-label={`Retirer ${a.nom}`}>
+                <IconeFermer taille={18} />
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </>
   );

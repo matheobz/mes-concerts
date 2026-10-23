@@ -10,7 +10,12 @@ import {
   fusionner,
   notifRappel,
   notifsNouveaux,
+  notifsRappelsVentes,
+  notifsVentes,
+  prochaineVente,
   purgerPasses,
+  ventesAAnnoncer,
+  ventesAProgrammer,
 } from './logique';
 import { CleManquante } from './ticketmaster';
 import type { Artiste, Donnees, Notif } from './types';
@@ -81,13 +86,24 @@ export async function verifier(ports: Ports, opts: Options): Promise<string> {
 
     const nouveaux = aAnnoncer(d, auj);
     const rappels = aRappeler(d, auj, RAPPEL_JOURS);
-    const notifs = notifsNouveaux(nouveaux, auj).concat(rappels.map((c) => notifRappel(c, auj)));
+    const ventes = ventesAAnnoncer(d, auj, maintenant);
+    const aProgrammer = ventesAProgrammer(d, auj, maintenant);
+    const notifs = notifsNouveaux(nouveaux, auj, maintenant)
+      .concat(notifsVentes(ventes, auj, maintenant))
+      .concat(rappels.map((c) => notifRappel(c, auj)))
+      .concat(notifsRappelsVentes(aProgrammer, maintenant));
     let envoye = false;
     if (notifs.length) {
       try {
         await ports.notifier(notifs);
-        for (const c of nouveaux) c.notifie = true;
+        for (const c of nouveaux) {
+          c.notifie = true;
+          // La notification de nouvelle date annonce déjà sa billetterie.
+          c.venteAnnoncee = prochaineVente(c, maintenant)?.debut;
+        }
+        for (const c of ventes) c.venteAnnoncee = prochaineVente(c, maintenant)?.debut;
         for (const c of rappels) c.rappelEnvoye = true;
+        for (const c of aProgrammer) c.venteRappels = prochaineVente(c, maintenant)?.debut;
         envoye = true;
       } catch (e) {
         erreurs.push(`notification : ${message(e)}`);
@@ -102,6 +118,8 @@ export async function verifier(ports: Ports, opts: Options): Promise<string> {
     if (nouveaux.length) morceaux.push(pluriel(nouveaux.length, 'nouvelle date') + (envoye ? '' : ' en attente'));
     else if (opts.reseau) morceaux.push('aucune nouvelle date');
     if (envoye && rappels.length) morceaux.push(pluriel(rappels.length, 'rappel'));
+    if (envoye && ventes.length) morceaux.push(`billetteries annoncées (${ventes.length})`);
+    if (envoye && aProgrammer.length) morceaux.push(`rappels de billetterie programmés (${aProgrammer.length})`);
     if (erreurs.length) morceaux.push(`problèmes : ${erreurs.join(' ; ')}`);
     const bilan = morceaux.join(', ') || 'rien de nouveau';
 

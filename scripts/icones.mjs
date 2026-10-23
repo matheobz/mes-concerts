@@ -1,4 +1,4 @@
-// Génère toutes les images de l'appli (fond violet, double croche blanche), sans dépendance :
+// Génère toutes les images de l'appli (fond nuit, double croche dorée), sans dépendance :
 //  - public/ : icônes de la version web,
 //  - android/... : icône du lanceur (classique, ronde, adaptative), petite icône des notifications,
 //    écran de démarrage.
@@ -7,7 +7,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 
-const VIOLET = [0x5b, 0x21, 0xb6];
+const NUIT = [0x0b, 0x0a, 0x10];
+const OR = [0xdc, 0xb8, 0x74];
 const BLANC = [0xff, 0xff, 0xff];
 
 // ---------- La note, en coordonnées normalisées (0..1) ----------
@@ -155,7 +156,7 @@ for (const [nom, t] of [
   ['icon-512.png', 512],
   ['apple-touch-icon.png', 180],
 ]) {
-  ecrire(join('public', nom), dessiner(t, t, { fond: VIOLET, note: pleine(t) }));
+  ecrire(join('public', nom), dessiner(t, t, { fond: NUIT, note: pleine(t), couleur: OR }));
 }
 
 // Android.
@@ -165,8 +166,8 @@ const DENSITES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
 for (const [densite, f] of Object.entries(DENSITES)) {
   // Icône du lanceur (Android 7) : carrée et ronde.
   const t = Math.round(48 * f);
-  ecrire(join(RES, `mipmap-${densite}`, 'ic_launcher.png'), dessiner(t, t, { fond: VIOLET, note: pleine(t) }));
-  ecrire(join(RES, `mipmap-${densite}`, 'ic_launcher_round.png'), dessiner(t, t, { fond: VIOLET, rond: true, note: pleine(t) }));
+  ecrire(join(RES, `mipmap-${densite}`, 'ic_launcher.png'), dessiner(t, t, { fond: NUIT, note: pleine(t), couleur: OR }));
+  ecrire(join(RES, `mipmap-${densite}`, 'ic_launcher_round.png'), dessiner(t, t, { fond: NUIT, rond: true, note: pleine(t), couleur: OR }));
 
   // Icône adaptative (Android 8 et plus) : la note seule, dans la zone sûre (66 sur 108).
   const a = Math.round(108 * f);
@@ -174,7 +175,7 @@ for (const [densite, f] of Object.entries(DENSITES)) {
   const marge = Math.round((a - zone) * 0.5);
   ecrire(
     join(RES, `mipmap-${densite}`, 'ic_launcher_foreground.png'),
-    dessiner(a, a, { fond: null, note: { x: marge, y: marge, taille: zone } }),
+    dessiner(a, a, { fond: null, note: { x: marge, y: marge, taille: zone }, couleur: OR }),
   );
 
   // Petite icône des notifications : blanche sur fond transparent (Android la colore lui-même).
@@ -182,7 +183,7 @@ for (const [densite, f] of Object.entries(DENSITES)) {
   ecrire(join(RES, `drawable-${densite}`, 'ic_stat_concert.png'), dessiner(n, n, { fond: null, note: pleine(n) }));
 }
 
-// Écrans de démarrage : fond violet, note au centre, mêmes tailles que ceux de Capacitor.
+// Écrans de démarrage : fond nuit, note dorée au centre, mêmes tailles que ceux de Capacitor.
 const ecrans = ['drawable'];
 for (const d of Object.keys(DENSITES)) ecrans.push(`drawable-land-${d}`, `drawable-port-${d}`);
 for (const dossier of ecrans) {
@@ -196,5 +197,5 @@ for (const dossier of ecrans) {
   }
   const t = Math.round(Math.min(largeur, hauteur) * 0.35);
   const note = { x: Math.round((largeur - t) * 0.5), y: Math.round((hauteur - t) * 0.5), taille: t };
-  ecrire(chemin, dessiner(largeur, hauteur, { fond: VIOLET, note }));
+  ecrire(chemin, dessiner(largeur, hauteur, { fond: NUIT, note, couleur: OR }));
 }

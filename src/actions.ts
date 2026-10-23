@@ -1,11 +1,19 @@
 // Toutes les actions de l'interface. Les données vivent sur le téléphone ; Ticketmaster
 // est appelé directement, avec la clé intégrée à la construction de l'appli.
 import { PAYS, RAPPEL_JOURS, VERIF_OUVERTURE_HEURES } from '../shared/config';
-import { aujourdhuiParis, fusionner, lireSauvegarde, normaliser, versEtat, versSauvegarde } from '../shared/logique';
+import {
+  aujourdhuiParis,
+  fusionner,
+  idsRappelsVente,
+  lireSauvegarde,
+  normaliser,
+  versEtat,
+  versSauvegarde,
+} from '../shared/logique';
 import { chercherConcerts, suggererArtistes } from '../shared/ticketmaster';
 import type { Artiste, Donnees, Etat, Notif, Suggestion } from '../shared/types';
 import { verificationDue, verifier } from '../shared/verification';
-import { ecrireDonnees, lireDonnees, notifier } from './natif';
+import { annulerNotifs, ecrireDonnees, lireDonnees, notifier } from './natif';
 
 export const CLE_TM: string = import.meta.env.VITE_TICKETMASTER_KEY ?? '';
 
@@ -78,11 +86,21 @@ export const actions = {
     return { etat: await actions.etat(), trouves, avertissement };
   },
 
-  retirerArtiste: (id: string) =>
-    modifier((d) => {
+  retirerArtiste: async (id: string) => {
+    const ids: number[] = [];
+    const etat = await modifier((d) => {
       d.artistes = d.artistes.filter((a) => a.id !== id);
-      for (const cle of Object.keys(d.concerts)) if (d.concerts[cle]!.artisteId === id) delete d.concerts[cle];
-    }),
+      for (const cle of Object.keys(d.concerts)) {
+        const c = d.concerts[cle]!;
+        if (c.artisteId !== id) continue;
+        // Rappels de billetterie déjà programmés pour cet artiste : on les annule.
+        if (c.venteRappels) ids.push(...idsRappelsVente(c.artisteNom, c.venteRappels));
+        delete d.concerts[cle];
+      }
+    });
+    await annulerNotifs(ids);
+    return etat;
+  },
 
   suivre: (id: string, suivi: boolean) =>
     modifier((d) => {

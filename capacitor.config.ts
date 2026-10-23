@@ -14,7 +14,7 @@ const config: CapacitorConfig = {
     CapacitorHttp: { enabled: true },
     LocalNotifications: {
       smallIcon: 'ic_stat_concert',
-      iconColor: '#5b21b6',
+      iconColor: '#c9a15b',
     },
     BackgroundRunner: {
       label: 'fr.berrez.mesconcerts.verification',

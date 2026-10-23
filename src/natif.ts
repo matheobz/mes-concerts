@@ -71,9 +71,21 @@ export async function notifier(notifs: Notif[]): Promise<void> {
       body: n.texte,
       largeBody: n.texte,
       smallIcon: 'ic_stat_concert',
-      iconColor: '#5b21b6',
+      iconColor: '#c9a15b',
+      // Rappels de billetterie : à l'heure dite, même téléphone en veille.
+      schedule: n.a ? { at: new Date(n.a), allowWhileIdle: true } : undefined,
     })),
   });
+}
+
+/** Annule des notifications programmées (artiste retiré). */
+export async function annulerNotifs(ids: number[]): Promise<void> {
+  if (!ids.length) return;
+  try {
+    await LocalNotifications.cancel({ notifications: ids.map((id) => ({ id })) });
+  } catch {
+    // Rien de programmé ou navigateur : sans importance.
+  }
 }
 
 export async function quandNotifTouchee(f: () => void): Promise<void> {

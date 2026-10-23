@@ -9,10 +9,11 @@ Aucun serveur : tout est sur le téléphone (un OnePlus sous OxygenOS). L'appli 
 ## Ce que fait l'appli
 
 1. **Mes artistes** : on tape un nom, l'appli propose les artistes connus de Ticketmaster (avec photo). On en touche un pour l'ajouter ; ses concerts déjà annoncés s'affichent tout de suite (sans notification).
-2. **Concerts** : liste par mois, avec date, ville, salle, heure, bouton « Billets ». Badge « Nouveau » pendant 7 jours. Filtre « Mes concerts suivis ».
+2. **Concerts** : le prochain concert à la une (grande affiche, compte à rebours), puis la liste par mois. Touché, un concert ouvre sa fiche : date, heure, salle, distance depuis sa ville, ouvertures de billetterie, boutons « Billets », « Suivre » et « Itinéraire ». Étiquettes « Nouveau » (7 jours), « Annulé », nom du festival, prochaine ouverture de billetterie, « En vente ». Filtres : tous ou suivis ; lieu (« Toute la France », « Autour de <sa ville> » dans un rayon de 50, 100 ou 200 km, ou une région) ; artiste.
 3. **Chaque jour, en arrière-plan** : l'appli interroge Ticketmaster, repère les dates jamais vues et envoie une notification (une par concert, ou une seule récapitulative au-delà de 3). Elle envoie aussi un rappel pour chaque concert suivi qui a lieu dans 3 jours ou moins.
-4. **À chaque ouverture** (secours si Android a bloqué la tâche de fond) : même vérification si la dernière a plus de 6 heures, et rappels.
-5. **Réglages** : état des notifications et de la batterie (avec explications OnePlus), « Vérifier maintenant », notification d'essai, sauvegarde et rechargement (fichier JSON), et un encart « Dépannage » (version, clé présente, test de la tâche de fond, heure de son dernier passage).
+4. **Billetterie** : dès qu'une ouverture (mise en vente ou prévente) est connue, une notification l'annonce, puis deux rappels sont programmés à l'heure exacte, 24 h et 1 h avant. Une tournée qui ouvre à la même heure ne donne qu'une alerte.
+5. **À chaque ouverture** (secours si Android a bloqué la tâche de fond) : même vérification si la dernière a plus de 6 heures, et rappels.
+6. **Réglages** : sa ville et le rayon du filtre, mise à jour de l'appli (bouton et vérification automatique), état des notifications et de la batterie (avec explications OnePlus), « Vérifier maintenant », notification d'essai, sauvegarde et rechargement (fichier JSON), et un encart « Dépannage » (version, clé présente, test de la tâche de fond, heure de son dernier passage).
 
 ## Comment c'est fait
 
@@ -24,6 +25,9 @@ Aucun serveur : tout est sur le téléphone (un OnePlus sous OxygenOS). L'appli 
 | Alertes | Notifications locales (`@capacitor/local-notifications`) ; permission POST_NOTIFICATIONS demandée au premier lancement (Android 13+) |
 | Tâche de fond | `@capacitor/background-runner` (WorkManager) : toutes les 4 h environ ; Ticketmaster une fois par jour ; notifications seulement entre 8h et 21h |
 | Batterie OnePlus | Plugin natif maison `BatteriePlugin.java` : détecte l'exemption, ouvre la fenêtre « Autoriser en arrière-plan » ou les réglages de l'appli |
+| Rappels de billetterie | Notifications programmées (`schedule.at`, alarme exacte : permission `USE_EXACT_ALARM`) |
+| Mise à jour | Plugin natif maison `MiseAJourPlugin.java` : lit la dernière release GitHub, télécharge l'APK et ouvre l'installateur Android (permission `REQUEST_INSTALL_PACKAGES`) |
+| Design | Thème nuit et or, police Fraunces (`@fontsource-variable/fraunces`, embarquée), animations CSS (désactivées si le téléphone demande moins d'animations) |
 | Sauvegarde | Export JSON via la feuille de partage Android (Drive, Gmail...), import par sélection de fichier |
 | Build | GitHub Actions : APK signé publié dans GitHub Releases |
 
@@ -38,9 +42,11 @@ Points techniques utiles :
 ## Structure
 
 ```
-src/              interface React (Concerts, Mes artistes, Réglages, bandeaux)
+src/              interface React (Concerts, Fiche, Mes artistes, Réglages, bandeaux)
   actions.ts      actions de l'interface (stockage local + Ticketmaster)
   natif.ts        accès au téléphone : stockage, notifications, batterie, partage, tâche de fond
+  lieux.ts        régions (code postal), villes, distance : filtre par lieu
+  maj.ts          mise à jour depuis l'appli (GitHub Releases)
 shared/           code commun à l'interface et à la tâche de fond
   logique.ts      logique pure : lecture Ticketmaster, nouvelles dates, rappels, textes, dates, sauvegarde
   verification.ts la vérification complète (réseau, fusion, notifications)
@@ -170,7 +176,11 @@ Settings > Pages > Source « Deploy from a branch », branche `main`, dossier `/
 
 ### Mettre à jour l'appli
 
-Modifier le code, commiter, pousser, puis créer un nouveau tag (`v2.0.1`, `v2.1.0`...). Delphine retélécharge par le même lien et installe par-dessus : ses données sont conservées. Le numéro de version Android (`versionCode`) est le numéro du run GitHub Actions, il augmente tout seul.
+Modifier le code, commiter, pousser, puis créer un nouveau tag (`v2.1.1`, `v2.2.0`...). Le numéro de version Android (`versionCode`) est le numéro du run GitHub Actions, il augmente tout seul.
+
+Depuis la v2.1.0, l'appli vérifie une fois par jour (à l'ouverture) s'il existe une release plus récente : un bandeau « Nouvelle version » apparaît, et Réglages > Mise à jour > « Mettre à jour » télécharge l'APK puis ouvre l'installateur Android. La première fois, Android demande d'autoriser « Mes concerts » à installer des applis (« Autoriser depuis cette source »). Android demande toujours une confirmation : pas de mise à jour silencieuse hors Play Store. Les données sont conservées.
+
+Les versions d'avant (v2.0.0) n'ont pas ce bouton : pour passer en v2.1.0, retélécharger une fois par le lien de la page.
 
 ### Changer de téléphone
 
@@ -213,6 +223,8 @@ Après une modification : nouveau tag, nouvelle release.
 ## Limites connues
 
 - Android décide du moment exact de la tâche de fond (WorkManager) ; sur OnePlus, sans les réglages de batterie, elle peut ne jamais tourner. L'ouverture de l'appli sert de filet de sécurité.
-- Ticketmaster ne couvre pas toutes les billetteries françaises (Fnac, petites salles).
+- Ticketmaster ne couvre pas toutes les billetteries françaises (Fnac, petites salles), ni toutes les programmations de festivals.
+- Les ouvertures de billetterie ne sont connues que si Ticketmaster les publie (champ `sales`). Les rappels 24 h et 1 h sont programmés sur le téléphone : si l'ouverture change après coup, le nouvel horaire est reprogrammé à la vérification suivante.
+- Le filtre « Autour de… » utilise la position des salles donnée par Ticketmaster ; les concerts enregistrés avant la v2.1.0 la reçoivent à la vérification suivante.
 - Un artiste ajouté « tel quel » (sans le choisir dans les propositions) est cherché par nom : résultats approximatifs possibles pour un nom très court ou courant. Mieux vaut choisir dans la liste proposée.
 - Android uniquement (pas d'iPhone).

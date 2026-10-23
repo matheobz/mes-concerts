@@ -49,6 +49,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Fenêtre "Autoriser l'appli à toujours fonctionner en arrière-plan ?" (OnePlus, économie de batterie). -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Rappels de billetterie à l'heure exacte (24 h et 1 h avant l'ouverture). -->
+    <!-- (SCHEDULE_EXACT_ALARM vient des plugins ; USE_EXACT_ALARM l'accorde d'office à partir d'Android 13.) -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Mise à jour depuis l'appli : ouvrir l'installateur Android avec la nouvelle version. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Relancer la vérification quotidienne après un redémarrage du téléphone. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 

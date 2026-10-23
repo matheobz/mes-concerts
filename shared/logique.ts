@@ -1,7 +1,7 @@
 // Logique pure (sans réseau ni stockage) : facile à tester.
 // Attention : ce code tourne aussi dans la tâche de fond Android, un moteur JavaScript minimal
 // (pas d'Intl, pas d'URL, pas de DOM). D'où les dates et les adresses construites à la main.
-import type { Artiste, Concert, Donnees, Etat, Notif, Suggestion } from './types';
+import type { Artiste, Concert, Donnees, Etat, Notif, Suggestion, Vente } from './types';
 
 /** Concert tel que lu chez Ticketmaster, avant rattachement à nos données. */
 export interface ConcertTrouve {
@@ -13,6 +13,11 @@ export interface ConcertTrouve {
   pays: string;
   url?: string;
   annule?: boolean;
+  cp?: string;
+  lat?: number;
+  lon?: number;
+  image?: string;
+  ventes?: Vente[];
 }
 
 export function donneesVides(): Donnees {
@@ -80,6 +85,16 @@ export function maintenantParis(d: Date = new Date()): { date: string; heure: nu
   };
 }
 
+/** Date (AAAA-MM-JJ) et heure "HH:MM" à Paris d'un instant ISO. */
+export function enParis(iso: string): { date: string; hm: string } {
+  const d = new Date(iso);
+  const p = new Date(d.getTime() + decalageParis(d) * 3_600_000);
+  return {
+    date: `${p.getUTCFullYear()}-${deux(p.getUTCMonth() + 1)}-${deux(p.getUTCDate())}`,
+    hm: `${deux(p.getUTCHours())}:${deux(p.getUTCMinutes())}`,
+  };
+}
+
 export function aujourdhuiParis(d: Date = new Date()): string {
   return maintenantParis(d).date;
 }
@@ -127,6 +142,8 @@ export function lireTicketmaster(json: any, artiste: Artiste): ConcertTrouve[] {
       if (!noms.some((n) => normaliser(n).includes(nomArtiste))) continue;
     }
     const salle = e?._embedded?.venues?.[0];
+    const lat = nombre(salle?.location?.latitude);
+    const lon = nombre(salle?.location?.longitude);
     resultat.push({
       titre,
       date,
@@ -136,23 +153,65 @@ export function lireTicketmaster(json: any, artiste: Artiste): ConcertTrouve[] {
       pays: salle?.country?.countryCode ?? '',
       url: e?.url,
       annule: e?.dates?.status?.code === 'cancelled',
+      cp: typeof salle?.postalCode === 'string' ? salle.postalCode : undefined,
+      lat: lat !== undefined && lon !== undefined ? lat : undefined,
+      lon: lat !== undefined && lon !== undefined ? lon : undefined,
+      image: choisirImage(e?.images, ['16_9', '3_2'], 640),
+      ventes: lireVentes(e?.sales),
     });
   }
   return resultat;
+}
+
+function nombre(v: unknown): number | undefined {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? parseFloat(v) : NaN;
+  return isFinite(n) ? n : undefined;
+}
+
+/** La plus petite image d'un des formats voulus qui fait au moins `largeur` pixels (sinon la plus grande). */
+function choisirImage(images: any, ratios: string[], largeur: number): string | undefined {
+  const liste: any[] = (Array.isArray(images) ? images : []).filter((i) => i && typeof i.url === 'string');
+  const bonnes = liste.filter((i) => ratios.includes(i.ratio)).sort((x, y) => (x.width ?? 0) - (y.width ?? 0));
+  const assez = bonnes.filter((i) => (i.width ?? 0) >= largeur)[0];
+  return (assez ?? bonnes[bonnes.length - 1] ?? liste[0])?.url;
+}
+
+/** Ouvertures de billetterie : mise en vente publique et préventes. */
+function lireVentes(sales: any): Vente[] | undefined {
+  const ventes: Vente[] = [];
+  const pub = sales?.public;
+  if (typeof pub?.startDateTime === 'string' && !pub.startTBD && !pub.startTBA) {
+    ventes.push({ debut: pub.startDateTime, fin: texteOuRien(pub.endDateTime), nom: 'Mise en vente' });
+  }
+  for (const p of Array.isArray(sales?.presales) ? sales.presales : []) {
+    if (typeof p?.startDateTime !== 'string') continue;
+    ventes.push({ debut: p.startDateTime, fin: texteOuRien(p.endDateTime), nom: texteOu(p.name, 'Prévente') });
+  }
+  ventes.sort((a, b) => Date.parse(a.debut) - Date.parse(b.debut));
+  return ventes.length ? ventes : undefined;
+}
+
+/** Prochaine ouverture de billetterie (pas encore commencée), s'il y en a une. */
+export function prochaineVente(c: { ventes?: Vente[] }, maintenant: Date): Vente | undefined {
+  const t = maintenant.getTime();
+  return (c.ventes ?? []).filter((v) => Date.parse(v.debut) > t)[0];
+}
+
+/** Les billets sont-ils en vente en ce moment ? */
+export function enVente(c: { ventes?: Vente[] }, maintenant: Date): boolean {
+  const t = maintenant.getTime();
+  return (c.ventes ?? []).some((v) => Date.parse(v.debut) <= t && (!v.fin || Date.parse(v.fin) > t));
 }
 
 /** Lit une réponse "attractions" de Ticketmaster (suggestions d'artistes). */
 export function lireSuggestions(json: any): Suggestion[] {
   const attractions: any[] = json?._embedded?.attractions ?? [];
   return attractions.map((a) => {
-    const images: any[] = a?.images ?? [];
-    const carree = images
-      .filter((i) => i?.ratio === '1_1' || i?.ratio === '4_3')
-      .sort((x, y) => (x.width ?? 0) - (y.width ?? 0))[0];
     return {
       tmId: String(a.id),
       nom: String(a.name),
-      image: carree?.url ?? images[0]?.url,
+      // Assez grande pour les portraits de l'écran « Mes artistes ».
+      image: choisirImage(a?.images, ['1_1', '4_3', '3_2'], 400),
       genre: a?.classifications?.[0]?.genre?.name,
       nbConcerts: a?.upcomingEvents?._total,
     };
@@ -189,6 +248,11 @@ export function fusionner(
       existant.salle = t.salle || existant.salle;
       existant.url = existant.url ?? t.url;
       existant.annule = t.annule;
+      existant.cp = t.cp ?? existant.cp;
+      existant.lat = t.lat ?? existant.lat;
+      existant.lon = t.lon ?? existant.lon;
+      existant.image = t.image ?? existant.image;
+      existant.ventes = t.ventes ?? existant.ventes;
       continue;
     }
     const concert: Concert = Object.assign({}, t, {
@@ -200,6 +264,8 @@ export function fusionner(
       suivi: false,
       rappelEnvoye: false,
     });
+    // Billetterie déjà connue à l'ajout de l'artiste : pas d'annonce (les rappels 24 h et 1 h restent).
+    if (opts.dejaConnus) concert.venteAnnoncee = prochaineVente(t, new Date(opts.maintenant))?.debut;
     donnees.concerts[id] = concert;
     nouveaux.push(concert);
   }
@@ -273,14 +339,18 @@ function quand(c: Concert, aujourdhui: string): string {
 }
 
 /** Jusqu'à 3 nouvelles dates : une notification chacune. Au-delà : une seule, récapitulative. */
-export function notifsNouveaux(concerts: Concert[], aujourdhui: string): Notif[] {
+export function notifsNouveaux(concerts: Concert[], aujourdhui: string, maintenant?: Date): Notif[] {
   if (!concerts.length) return [];
   if (concerts.length <= 3) {
-    return concerts.map((c) => ({
-      id: idNotif(`nouveau|${c.id}`),
-      titre: `Nouveau concert : ${c.artisteNom}`,
-      texte: [quand(c, aujourdhui), lieu(c)].filter(Boolean).join(', '),
-    }));
+    return concerts.map((c) => {
+      const v = maintenant ? prochaineVente(c, maintenant) : undefined;
+      const billets = v ? `${nomVente(v)} ${quandVente(v.debut, aujourdhui)}` : '';
+      return {
+        id: idNotif(`nouveau|${c.id}`),
+        titre: `Nouveau concert : ${c.artisteNom}`,
+        texte: [quand(c, aujourdhui), lieu(c)].filter(Boolean).join(', ') + (billets ? `. ${billets}` : ''),
+      };
+    });
   }
   const noms: string[] = [];
   for (const c of concerts) if (!noms.includes(c.artisteNom)) noms.push(c.artisteNom);
@@ -303,6 +373,124 @@ export function notifRappel(c: Concert, aujourdhui: string): Notif {
     titre: `Rappel : ${c.artisteNom}, ${dans}`,
     texte: [quand(c, aujourdhui), lieu(c)].filter(Boolean).join(', '),
   };
+}
+
+// ---------- Billetterie ----------
+
+/** "vendredi 31 octobre à 10h" (heure de Paris). */
+export function quandVente(debut: string, aujourdhui: string): string {
+  const p = enParis(debut);
+  return `${dateCourte(p.date, aujourdhui)} à ${heureFr(p.hm).replace('h00', 'h')}`;
+}
+
+interface GroupeVente {
+  artisteNom: string;
+  vente: Vente;
+  concerts: Concert[];
+}
+
+/** Regroupe par artiste et ouverture : une tournée qui ouvre à la même heure = une seule alerte. */
+function grouperVentes(concerts: Concert[], maintenant: Date): GroupeVente[] {
+  const groupes: GroupeVente[] = [];
+  for (const c of concerts) {
+    const v = prochaineVente(c, maintenant);
+    if (!v) continue;
+    const g = groupes.filter((x) => x.artisteNom === c.artisteNom && x.vente.debut === v.debut)[0];
+    if (g) g.concerts.push(c);
+    else groupes.push({ artisteNom: c.artisteNom, vente: v, concerts: [c] });
+  }
+  return groupes;
+}
+
+function lieuxGroupe(g: GroupeVente): string {
+  if (g.concerts.length === 1) return lieu(g.concerts[0]!);
+  const villes: string[] = [];
+  for (const c of g.concerts) if (c.ville && !villes.includes(c.ville)) villes.push(c.ville);
+  const debut = villes.slice(0, 3).join(', ');
+  return `${g.concerts.length} dates${debut ? ` : ${debut}${villes.length > 3 ? '…' : ''}` : ''}`;
+}
+
+function nomVente(v: Vente): string {
+  return v.nom === 'Mise en vente' ? 'Billetterie' : v.nom;
+}
+
+/** Concerts dont l'ouverture de billetterie n'a pas encore été annoncée. */
+export function ventesAAnnoncer(donnees: Donnees, aujourdhui: string, maintenant: Date): Concert[] {
+  return trier(
+    liste(donnees).filter((c) => {
+      if (c.annule || !c.notifie || c.date < aujourdhui) return false;
+      const v = prochaineVente(c, maintenant);
+      return !!v && c.venteAnnoncee !== v.debut;
+    }),
+  );
+}
+
+/** Annonce des ouvertures de billetterie. Plus de 3 : une seule notification récapitulative. */
+export function notifsVentes(concerts: Concert[], aujourdhui: string, maintenant: Date): Notif[] {
+  const groupes = grouperVentes(concerts, maintenant);
+  if (!groupes.length) return [];
+  if (groupes.length <= 3) {
+    return groupes.map((g) => ({
+      id: idNotif(`vente|${g.artisteNom}|${g.vente.debut}`),
+      titre: `${nomVente(g.vente)} ${g.artisteNom} : ${quandVente(g.vente.debut, aujourdhui)}`,
+      texte: lieuxGroupe(g),
+    }));
+  }
+  const noms: string[] = [];
+  for (const g of groupes) if (!noms.includes(g.artisteNom)) noms.push(g.artisteNom);
+  const reste = noms.length - 3;
+  return [
+    {
+      id: idNotif(`ventes|${aujourdhui}|${groupes.length}`),
+      titre: `${groupes.length} ouvertures de billetterie annoncées`,
+      texte: noms.slice(0, 3).join(', ') + (reste > 0 ? ` et ${reste} autre${reste > 1 ? 's' : ''}` : ''),
+    },
+  ];
+}
+
+/** Concerts dont les rappels de billetterie (24 h et 1 h avant) ne sont pas encore programmés. */
+export function ventesAProgrammer(donnees: Donnees, aujourdhui: string, maintenant: Date): Concert[] {
+  return trier(
+    liste(donnees).filter((c) => {
+      if (c.annule || c.date < aujourdhui) return false;
+      const v = prochaineVente(c, maintenant);
+      return !!v && c.venteRappels !== v.debut;
+    }),
+  );
+}
+
+function idRappelVente(cle: string, artisteNom: string, debut: string): number {
+  return idNotif(`vente-${cle}|${artisteNom}|${debut}`);
+}
+
+/** Identifiants des deux rappels (24 h, 1 h) d'une ouverture : pour les annuler. */
+export function idsRappelsVente(artisteNom: string, debut: string): number[] {
+  return [idRappelVente('j1', artisteNom, debut), idRappelVente('h1', artisteNom, debut)];
+}
+
+/** Rappels programmés 24 h et 1 h avant chaque ouverture (sauf si l'heure est déjà passée). */
+export function notifsRappelsVentes(concerts: Concert[], maintenant: Date): Notif[] {
+  const t = maintenant.getTime();
+  const notifs: Notif[] = [];
+  for (const g of grouperVentes(concerts, maintenant)) {
+    const debut = Date.parse(g.vente.debut);
+    const hm = heureFr(enParis(g.vente.debut).hm).replace('h00', 'h');
+    const avant = [
+      { ecart: 24 * 3_600_000, cle: 'j1', dans: `demain à ${hm}` },
+      { ecart: 3_600_000, cle: 'h1', dans: 'dans 1 heure' },
+    ];
+    for (const a of avant) {
+      const quand = debut - a.ecart;
+      if (quand <= t + 60_000) continue;
+      notifs.push({
+        id: idRappelVente(a.cle, g.artisteNom, g.vente.debut),
+        titre: `${nomVente(g.vente)} ${g.artisteNom} ${a.dans}`,
+        texte: lieuxGroupe(g),
+        a: new Date(quand).toISOString(),
+      });
+    }
+  }
+  return notifs;
 }
 
 // ---------- Sauvegarde (export / import) ----------
@@ -372,6 +560,15 @@ export function lireSauvegarde(texte: string): Donnees {
       pays: texteOu(c.pays, ''),
       url: texteOuRien(c.url),
       annule: Boolean(c.annule),
+      cp: texteOuRien(c.cp),
+      lat: nombre(c.lat),
+      lon: nombre(c.lon),
+      image: texteOuRien(c.image),
+      ventes: Array.isArray(c.ventes)
+        ? c.ventes.filter((v: any) => v && typeof v.debut === 'string' && typeof v.nom === 'string')
+        : undefined,
+      // Pas d'annonce de billetterie pour des dates déjà connues ; les rappels se reprogramment.
+      venteAnnoncee: texteOuRien(c.venteAnnoncee),
       trouveLe: texteOu(c.trouveLe, maintenant),
       // Après un import, pas d'alerte pour des dates déjà connues.
       notifie: true,

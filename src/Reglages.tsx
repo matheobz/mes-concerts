@@ -1,19 +1,114 @@
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import type { Etat } from '../shared/types';
 import { CLE_TM, actions } from './actions';
-import type { Outils } from './App';
+import type { EtatMaj, Outils } from './App';
 import { type Autorisations, activerNotifs, libererBatterie } from './Bandeaux';
 import { dateEtHeure } from './format';
+import { type PrefLieu, RAYONS, VILLES } from './lieux';
+import { chercherMiseAJour, installer, majAuto, setMajAuto, versionInstallee } from './maj';
 import { lancerTacheFond, ouvrirReglagesAppli, partagerFichier, surTelephone, versionAppli } from './natif';
+
+/** Carte « Mise à jour » : vérifier, télécharger et installer la dernière version publiée. */
+function MiseAJour({ maj, outils }: { maj: EtatMaj; outils: Outils }) {
+  const [version, setVersion] = useState('');
+  const [auto, setAuto] = useState(majAuto);
+  const [etape, setEtape] = useState<'' | 'recherche' | 'telechargement'>('');
+  const [pourcent, setPourcent] = useState(0);
+  const [aJour, setAJour] = useState(false);
+  const { publication, setPublication } = maj;
+
+  useEffect(() => {
+    void versionInstallee().then(setVersion);
+  }, []);
+
+  async function rechercher() {
+    setEtape('recherche');
+    setAJour(false);
+    try {
+      const p = await chercherMiseAJour();
+      setPublication(p);
+      if (!p) setAJour(true);
+    } catch (e) {
+      outils.echec(e);
+    } finally {
+      setEtape('');
+    }
+  }
+
+  async function mettreAJour() {
+    if (!publication) return;
+    setEtape('telechargement');
+    setPourcent(0);
+    try {
+      const r = await installer(publication, setPourcent);
+      outils.informer(
+        r === 'autorisation'
+          ? 'Activez « Autoriser depuis cette source », revenez, puis touchez à nouveau « Mettre à jour ».'
+          : 'Touchez « Mettre à jour » dans la fenêtre Android. Vos artistes et concerts sont conservés.',
+      );
+    } catch (e) {
+      outils.echec(e);
+    } finally {
+      setEtape('');
+    }
+  }
+
+  return (
+    <section className="carte">
+      <h2>Mise à jour</h2>
+      <p className="discret">
+        {surTelephone ? `Version installée : ${version || '?'}` : 'Mise à jour disponible seulement sur le téléphone.'}
+      </p>
+      {publication ? (
+        <>
+          <p className="ok">Nouvelle version {publication.version} disponible.</p>
+          {etape === 'telechargement' && (
+            <div className="progression" role="progressbar" aria-valuenow={pourcent} aria-valuemin={0} aria-valuemax={100}>
+              <span style={{ width: `${pourcent}%` }} />
+            </div>
+          )}
+          <button className="principal" disabled={!!etape} onClick={() => void mettreAJour()}>
+            {etape === 'telechargement' ? `Téléchargement… ${pourcent} %` : 'Mettre à jour'}
+          </button>
+        </>
+      ) : (
+        <>
+          {aJour && <p className="ok">L'appli est à jour.</p>}
+          <button className="secondaire" disabled={!!etape || !surTelephone} onClick={() => void rechercher()}>
+            {etape === 'recherche' ? 'Recherche…' : 'Rechercher une mise à jour'}
+          </button>
+        </>
+      )}
+      <label className="interrupteur">
+        <input
+          type="checkbox"
+          checked={auto}
+          onChange={(e) => {
+            setMajAuto(e.target.checked);
+            setAuto(e.target.checked);
+          }}
+        />
+        <span className="glissiere" aria-hidden />
+        Prévenir automatiquement quand une nouvelle version sort
+      </label>
+    </section>
+  );
+}
 
 export function Reglages({
   etat,
   outils,
   autorisations,
+  lieu,
+  setLieu,
+  maj,
 }: {
   etat: Etat;
   outils: Outils;
   autorisations: Autorisations;
+  lieu: PrefLieu;
+  setLieu: (p: PrefLieu) => void;
+  maj: EtatMaj;
 }) {
   const [enCours, setEnCours] = useState('');
   const [version, setVersion] = useState('');
@@ -79,8 +174,34 @@ export function Reglages({
         <h2>Comment ça marche</h2>
         <p>Chaque jour, l'application cherche toute seule les concerts de vos artistes en France.</p>
         <p>Dès qu'une nouvelle date est annoncée, une notification apparaît sur votre téléphone.</p>
-        <p>Touchez « Suivre » sur un concert : vous aurez un rappel {etat.rappelJours} jours avant.</p>
+        <p>
+          Billetterie : une alerte quand l'ouverture est annoncée, puis 24 heures et 1 heure avant, pour être
+          prête au bon moment.
+        </p>
+        <p>Touchez la cloche d'un concert : vous aurez un rappel {etat.rappelJours} jours avant.</p>
       </section>
+
+      <section className="carte">
+        <h2>Ma ville</h2>
+        <p>Pour le filtre « Autour de… » de l'écran Concerts.</p>
+        <select value={lieu.ville} onChange={(e) => setLieu({ ...lieu, ville: e.target.value })} aria-label="Ma ville">
+          {VILLES.map((v) => (
+            <option key={v.nom} value={v.nom}>
+              {v.nom}
+            </option>
+          ))}
+        </select>
+        <div className="segments" style={{ '--rang': RAYONS.indexOf(lieu.rayon), '--nb': RAYONS.length } as CSSProperties}>
+          <span className="curseur" aria-hidden />
+          {RAYONS.map((r) => (
+            <button key={r} className={lieu.rayon === r ? 'actif' : ''} onClick={() => setLieu({ ...lieu, rayon: r })}>
+              {r} km
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <MiseAJour maj={maj} outils={outils} />
 
       <section className="carte">
         <h2>Notifications</h2>

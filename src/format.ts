@@ -40,6 +40,41 @@ export function estRecent(iso: string): boolean {
   return Date.now() - Date.parse(iso) < 7 * 86_400_000;
 }
 
+/** "Ce soir", "Demain", "Dans 12 jours", "Dans 3 mois". */
+export function compteARebours(date: string, aujourdhui: string): string {
+  const j = Math.round((enDate(date).getTime() - enDate(aujourdhui).getTime()) / 86_400_000);
+  if (j <= 0) return "Aujourd'hui";
+  if (j === 1) return 'Demain';
+  if (j < 45) return `Dans ${j} jours`;
+  const m = Math.round(j / 30.4);
+  return `Dans ${m} mois`;
+}
+
+/** "samedi 14 novembre 2026". */
+export function dateComplete(date: string): string {
+  const t = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(
+    enDate(date),
+  );
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** Ouverture de billetterie : "ven. 31 oct. à 10h". */
+export function quandVente(iso: string): string {
+  const d = new Date(iso);
+  const jour = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Paris' }).format(d);
+  const h = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+    .format(d)
+    .replace(':', 'h')
+    .replace('h00', 'h');
+  return `${jour} à ${h}`;
+}
+
+const FESTIVAL = /festival|fest\b|f[eê]te de l|eurock|solidays|vieilles charrues|hellfest|printemps de bourges|francofolies|garorock|we love green|rock en seine|lollapalooza/i;
+
+export function estFestival(titre: string): boolean {
+  return FESTIVAL.test(titre);
+}
+
 export function pluriel(n: number, mot: string, motPluriel = `${mot}s`): string {
   return `${n} ${n > 1 ? motPluriel : mot}`;
 }

@@ -6,7 +6,7 @@
 // Ce fichier est compilé à part (vite.runner.config.ts) en un script autonome : dist/runners/verification.js.
 // Le moteur qui l'exécute est minimal : fetch, setTimeout, CapacitorKV, CapacitorNotifications.
 import { CLE_DONNEES, EVENEMENT_FOND, HEURE_DEBUT, HEURE_FIN, PAYS } from '../shared/config';
-import { lireStockage, maintenantParis } from '../shared/logique';
+import { decalageParis, lireStockage, maintenantParis } from '../shared/logique';
 import { chercherConcerts } from '../shared/ticketmaster';
 import type { Donnees, Notif } from '../shared/types';
 import { type Ports, verifieAujourdhui, verifier } from '../shared/verification';
@@ -42,14 +42,23 @@ function ecrireDonnees(d: Donnees): void {
   g.CapacitorKV.set(CLE_DONNEES, JSON.stringify(d));
 }
 
+/**
+ * Le plugin Android lit "scheduleAt" comme une heure locale du téléphone, en ignorant le "Z" final.
+ * On lui donne donc l'heure de Paris écrite au format ISO (le téléphone de Delphine est à l'heure de Paris).
+ */
+function heureMurale(iso: string): string {
+  const d = new Date(iso);
+  return new Date(d.getTime() + decalageParis(d) * 3_600_000).toISOString();
+}
+
 function notifier(notifs: Notif[]): void {
   g.CapacitorNotifications.schedule(
     notifs.map((n) => ({
       id: n.id,
       title: n.titre,
       body: n.texte,
-      // Tout de suite (le plugin attend une date au format ISO).
-      scheduleAt: new Date().toISOString(),
+      // Tout de suite, ou à l'heure dite pour les rappels de billetterie.
+      scheduleAt: n.a ? heureMurale(n.a) : new Date().toISOString(),
       smallIcon: 'ic_stat_concert',
       autoCancel: true,
     })),

@@ -6,8 +6,9 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Plugin maison (batterie) : à enregistrer avant super.onCreate.
+        // Plugins maison (batterie, mise à jour) : à enregistrer avant super.onCreate.
         registerPlugin(BatteriePlugin.class);
+        registerPlugin(MiseAJourPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
